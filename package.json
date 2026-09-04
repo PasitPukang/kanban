@@ -1,0 +1,11 @@
+{
+  "name": "clicknext-kanban-homework-hub",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Clicknext Frontend Developer Assessment - Homework Hub Kanban Board",
+  "scripts": {
+    "dev": "npm run dev --prefix client",
+    "build": "npm run build --prefix client",
+    "preview": "npm run preview --prefix client"
+  }
+}

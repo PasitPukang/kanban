@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { X, UserPlus, Mail, Check, Shield } from 'lucide-vue-next'
 import { Board, User } from '../../types'
 import { useAuthStore } from '../../stores/auth'
@@ -17,6 +17,20 @@ const emit = defineEmits<{
 const authStore = useAuthStore()
 const email = ref('')
 const feedbackMessage = ref('')
+
+const handleKeyDown = (event: KeyboardEvent) => {
+  if (event.key === 'Escape' && props.isOpen) {
+    emit('close')
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('keydown', handleKeyDown)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeyDown)
+})
 
 const handleInvite = (targetEmail?: string) => {
   const mailToInvite = targetEmail || email.value.trim()
@@ -38,6 +52,7 @@ const isAlreadyMember = (userId: string) => {
 <template>
   <div
     v-if="isOpen && board"
+    @click.self="$emit('close')"
     class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in"
   >
     <div

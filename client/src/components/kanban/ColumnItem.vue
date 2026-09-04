@@ -166,7 +166,7 @@ const handleDrop = (e: DragEvent) => {
         v-if="!column.tasks || column.tasks.length === 0"
         class="h-24 border-2 border-dashed border-[#E0DBD0] rounded-2xl flex items-center justify-center text-neutral-400 text-xs font-medium"
       >
-        <span>วางการ์ดที่นี่</span>
+        <span>ยังไม่มีการบ้าน (ลากมาวางที่นี่)</span>
       </div>
     </div>
 
@@ -177,7 +177,7 @@ const handleDrop = (e: DragEvent) => {
         class="w-full py-2 px-3 rounded-2xl bg-white/70 hover:bg-white border border-[#E0DBD0] hover:border-neutral-400 text-neutral-600 hover:text-black text-xs font-semibold flex items-center justify-center gap-1.5 transition-all group shadow-2xs"
       >
         <Plus class="w-4 h-4 group-hover:scale-110 transition-transform text-neutral-800" />
-        เพิ่มการ์ดงาน
+        <span>+ เพิ่มการบ้าน</span>
       </button>
     </div>
   </div>

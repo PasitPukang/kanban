@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   ArrowLeft,
@@ -42,10 +42,22 @@ const newTaskTitle = ref('')
 const newTaskDesc = ref('')
 const newTaskTag = ref('')
 
+const handleKeyDown = (event: KeyboardEvent) => {
+  if (event.key === 'Escape') {
+    if (isAddTaskModalOpen.value) isAddTaskModalOpen.value = false
+    if (isAddingColumn.value) isAddingColumn.value = false
+  }
+}
+
 onMounted(async () => {
+  document.addEventListener('keydown', handleKeyDown)
   if (boardId.value) {
     await boardStore.fetchBoardById(boardId.value)
   }
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeyDown)
 })
 
 const currentBoard = computed(() => boardStore.currentBoard)
@@ -68,6 +80,12 @@ const handleUpdateColumnTitle = async (columnId: string, newTitle: string) => {
 }
 
 const handleDeleteColumn = async (columnId: string) => {
+  const col = currentBoard.value?.columns?.find((c) => c.id === columnId)
+  const count = col?.tasks?.length || 0
+  const confirmMsg = count > 0
+    ? `คุณแน่ใจหรือไม่ว่าต้องการลบคอลัมน์ "${col?.title || ''}"? (${count} การ์ดงานในคอลัมน์นี้จะถูกลบไปด้วย)`
+    : `คุณแน่ใจหรือไม่ว่าต้องการลบคอลัมน์ "${col?.title || ''}"?`
+  if (!confirm(confirmMsg)) return
   await boardStore.deleteColumn(columnId)
 }
 
@@ -182,10 +200,10 @@ const handleInviteMember = async (email: string) => {
         <!-- Invite Button (Requirement 3) -->
         <button
           @click="isInviteModalOpen = true"
-          class="flex items-center gap-1.5 px-4 py-2 rounded-full bg-black text-white hover:bg-neutral-800 text-xs font-semibold shadow-sm transition-all hover:scale-105 active:scale-95"
+          class="flex items-center gap-1.5 px-4 py-2 rounded-full bg-neutral-900 text-white hover:bg-black text-xs font-semibold shadow-sm transition-all hover:scale-102 active:scale-98"
         >
           <UserPlus class="w-3.5 h-3.5" />
-          <span>เชิญสมาชิก</span>
+          <span>+ ชวนเพื่อนร่วมกลุ่ม</span>
         </button>
       </div>
     </div>
@@ -217,7 +235,7 @@ const handleInviteMember = async (email: string) => {
             type="text"
             @keyup.enter="handleCreateColumn"
             @keyup.esc="isAddingColumn = false"
-            placeholder="ตั้งชื่อคอลัมน์ใหม่..."
+            placeholder="เช่น ตรวจทาน, ส่งแล้ว..."
             class="w-full px-3 py-2 bg-[#FAF8F5] border border-[#E5E0D5] rounded-xl text-xs text-neutral-900 focus:outline-none focus:border-black"
             autofocus
           />
@@ -230,9 +248,9 @@ const handleInviteMember = async (email: string) => {
             </button>
             <button
               @click="handleCreateColumn"
-              class="px-4 py-1.5 bg-black text-white text-xs font-semibold rounded-full hover:bg-neutral-800 transition-colors"
+              class="px-4 py-1.5 bg-neutral-900 text-white text-xs font-semibold rounded-full hover:bg-black transition-colors"
             >
-              เพิ่มคอลัมน์
+              เพิ่มขั้นตอน
             </button>
           </div>
         </div>
@@ -244,7 +262,7 @@ const handleInviteMember = async (email: string) => {
           class="w-full py-4 px-4 rounded-[28px] border-2 border-dashed border-[#E0DBD0] hover:border-black hover:bg-white text-neutral-500 hover:text-black text-xs font-bold flex items-center justify-center gap-2 transition-all"
         >
           <Plus class="w-4 h-4 text-black" />
-          <span>+ เพิ่มคอลัมน์ใหม่</span>
+          <span>+ เพิ่มขั้นตอนการบ้าน</span>
         </button>
       </div>
     </div>
@@ -252,20 +270,21 @@ const handleInviteMember = async (email: string) => {
     <!-- Quick Add Task Modal -->
     <div
       v-if="isAddTaskModalOpen"
+      @click.self="isAddTaskModalOpen = false"
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in"
     >
       <div class="bg-white border border-[#E5E0D5] rounded-3xl w-full max-w-md p-6 shadow-2xl space-y-4 animate-in zoom-in-95">
         <h3 class="font-display font-bold text-neutral-900 text-sm flex items-center gap-2">
-          <ListTodo class="w-4 h-4 text-black" />
-          เพิ่มการ์ดงานใหม่ (New Task)
+          <ListTodo class="w-4 h-4 text-amber-600" />
+          เพิ่มการบ้าน / งานที่ต้องส่ง (New Assignment)
         </h3>
 
         <div>
-          <label class="block text-xs font-semibold text-neutral-600 mb-1">ชื่องาน *</label>
+          <label class="block text-xs font-semibold text-neutral-600 mb-1">ชื่อการบ้าน / หัวข้องาน *</label>
           <input
             v-model="newTaskTitle"
             type="text"
-            placeholder="เช่น ออกแบบหน้า Login, เชื่อมต่อ API..."
+            placeholder="เช่น แบบฝึกหัดบทที่ 3, เขียนสรุปรายงาน, ทำสไลด์นำเสนอ..."
             class="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-[#E5E0D5] rounded-2xl text-xs text-neutral-900 focus:outline-none focus:border-black"
             autofocus
             @keyup.enter="submitNewTask"
@@ -273,11 +292,11 @@ const handleInviteMember = async (email: string) => {
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-neutral-600 mb-1">คำอธิบาย</label>
+          <label class="block text-xs font-semibold text-neutral-600 mb-1">รายละเอียดคำสั่ง / หน้าหนังสือ (Optional)</label>
           <textarea
             v-model="newTaskDesc"
             rows="2"
-            placeholder="รายละเอียดของงาน (Optional)"
+            placeholder="ระบุหน้าที่ทำ คำสั่งอาจารย์ หรือเกณฑ์การให้คะแนน..."
             class="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-[#E5E0D5] rounded-2xl text-xs text-neutral-900 focus:outline-none focus:border-black"
           ></textarea>
         </div>
@@ -287,7 +306,7 @@ const handleInviteMember = async (email: string) => {
           <input
             v-model="newTaskTag"
             type="text"
-            placeholder="เช่น Feature, Urgent, UI"
+            placeholder="เช่น การบ้านด่วน ⚡, งานกลุ่ม 👥, มีรายงาน 📄"
             class="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-[#E5E0D5] rounded-2xl text-xs text-neutral-900 focus:outline-none focus:border-black"
           />
         </div>

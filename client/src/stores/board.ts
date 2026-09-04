@@ -15,19 +15,50 @@ export const useBoardStore = defineStore('board', () => {
   const isLoading = ref<boolean>(false)
   const error = ref<string | null>(null)
 
+  /**
+   * Helper: Check if active data mode is API with a valid token
+   */
+  const isApiMode = (): boolean => authStore.dataMode === 'api' && !!authStore.token
+
+  /**
+   * Helper: Dispatch query returning data based on active data mode (API vs LocalStorage)
+   */
+  const withDataMode = async <T>(
+    apiFn: () => Promise<T>,
+    localFn: () => T | Promise<T>
+  ): Promise<T> => {
+    if (isApiMode()) {
+      return await apiFn()
+    }
+    return await localFn()
+  }
+
+  /**
+   * Helper: Dispatch action command based on active data mode
+   */
+  const runByMode = async (
+    apiFn: () => Promise<any>,
+    localFn: () => any
+  ): Promise<void> => {
+    if (isApiMode()) {
+      await apiFn()
+    } else {
+      await localFn()
+    }
+  }
+
   // Fetch all user boards
   const fetchBoards = async () => {
     isLoading.value = true
     error.value = null
     try {
-      if (authStore.dataMode === 'api' && authStore.token) {
-        const res = await apiClient.get('/boards')
-        if (res.data.success) {
-          boards.value = res.data.data
-        }
-      } else {
-        boards.value = storageService.getBoards()
-      }
+      boards.value = await withDataMode(
+        async () => {
+          const res = await apiClient.get('/boards')
+          return res.data.success ? res.data.data : storageService.getBoards()
+        },
+        () => storageService.getBoards()
+      )
     } catch (err: any) {
       console.error('Fetch boards error:', err)
       boards.value = storageService.getBoards()
@@ -41,14 +72,13 @@ export const useBoardStore = defineStore('board', () => {
     isLoading.value = true
     error.value = null
     try {
-      if (authStore.dataMode === 'api' && authStore.token) {
-        const res = await apiClient.get(`/boards/${boardId}`)
-        if (res.data.success) {
-          currentBoard.value = res.data.data
-        }
-      } else {
-        currentBoard.value = storageService.getBoardById(boardId)
-      }
+      currentBoard.value = await withDataMode(
+        async () => {
+          const res = await apiClient.get(`/boards/${boardId}`)
+          return res.data.success ? res.data.data : storageService.getBoardById(boardId)
+        },
+        () => storageService.getBoardById(boardId)
+      )
     } catch (err: any) {
       console.error('Fetch board detail error:', err)
       currentBoard.value = storageService.getBoardById(boardId)
@@ -61,19 +91,19 @@ export const useBoardStore = defineStore('board', () => {
   const createBoard = async (title: string, description?: string): Promise<Board | null> => {
     isLoading.value = true
     try {
-      if (authStore.dataMode === 'api' && authStore.token) {
+      if (isApiMode()) {
         const res = await apiClient.post('/boards', { title, description })
         if (res.data.success) {
           await fetchBoards()
           return res.data.data
         }
+        return null
       } else {
         if (!authStore.currentUser) return null
         const newBoard = storageService.createBoard(title, description || null, authStore.currentUser)
         await fetchBoards()
         return newBoard
       }
-      return null
     } catch (err: any) {
       error.value = err.message
       return null
@@ -85,11 +115,10 @@ export const useBoardStore = defineStore('board', () => {
   // Update Board Title / Description
   const updateBoard = async (boardId: string, data: { title?: string; description?: string | null }) => {
     try {
-      if (authStore.dataMode === 'api' && authStore.token) {
-        await apiClient.patch(`/boards/${boardId}`, data)
-      } else {
-        storageService.updateBoard(boardId, data)
-      }
+      await runByMode(
+        () => apiClient.patch(`/boards/${boardId}`, data),
+        () => storageService.updateBoard(boardId, data)
+      )
       if (currentBoard.value && currentBoard.value.id === boardId) {
         if (data.title !== undefined) currentBoard.value.title = data.title
         if (data.description !== undefined) currentBoard.value.description = data.description
@@ -103,11 +132,10 @@ export const useBoardStore = defineStore('board', () => {
   // Delete Board
   const deleteBoard = async (boardId: string) => {
     try {
-      if (authStore.dataMode === 'api' && authStore.token) {
-        await apiClient.delete(`/boards/${boardId}`)
-      } else {
-        storageService.deleteBoard(boardId)
-      }
+      await runByMode(
+        () => apiClient.delete(`/boards/${boardId}`),
+        () => storageService.deleteBoard(boardId)
+      )
       if (currentBoard.value?.id === boardId) {
         currentBoard.value = null
       }
@@ -120,7 +148,7 @@ export const useBoardStore = defineStore('board', () => {
   // Invite Member to Board
   const inviteMember = async (boardId: string, email: string): Promise<boolean> => {
     try {
-      if (authStore.dataMode === 'api' && authStore.token) {
+      if (isApiMode()) {
         const res = await apiClient.post(`/boards/${boardId}/invite`, { email })
         if (res.data.success) {
           await fetchBoardById(boardId)
@@ -150,11 +178,10 @@ export const useBoardStore = defineStore('board', () => {
   // --- Column Management ---
   const createColumn = async (boardId: string, title: string) => {
     try {
-      if (authStore.dataMode === 'api' && authStore.token) {
-        await apiClient.post(`/boards/${boardId}/columns`, { title })
-      } else {
-        storageService.createColumn(boardId, title)
-      }
+      await runByMode(
+        () => apiClient.post(`/boards/${boardId}/columns`, { title }),
+        () => storageService.createColumn(boardId, title)
+      )
       await fetchBoardById(boardId)
     } catch (err) {
       console.error('Create column error:', err)
@@ -163,11 +190,10 @@ export const useBoardStore = defineStore('board', () => {
 
   const updateColumn = async (columnId: string, title: string) => {
     try {
-      if (authStore.dataMode === 'api' && authStore.token) {
-        await apiClient.patch(`/columns/${columnId}`, { title })
-      } else {
-        storageService.updateColumn(columnId, title)
-      }
+      await runByMode(
+        () => apiClient.patch(`/columns/${columnId}`, { title }),
+        () => storageService.updateColumn(columnId, title)
+      )
       if (currentBoard.value?.columns) {
         const col = currentBoard.value.columns.find((c) => c.id === columnId)
         if (col) col.title = title
@@ -179,11 +205,10 @@ export const useBoardStore = defineStore('board', () => {
 
   const deleteColumn = async (columnId: string) => {
     try {
-      if (authStore.dataMode === 'api' && authStore.token) {
-        await apiClient.delete(`/columns/${columnId}`)
-      } else {
-        storageService.deleteColumn(columnId)
-      }
+      await runByMode(
+        () => apiClient.delete(`/columns/${columnId}`),
+        () => storageService.deleteColumn(columnId)
+      )
       if (currentBoard.value?.columns) {
         currentBoard.value.columns = currentBoard.value.columns.filter((c) => c.id !== columnId)
       }
@@ -204,7 +229,7 @@ export const useBoardStore = defineStore('board', () => {
     }
   ) => {
     try {
-      if (authStore.dataMode === 'api' && authStore.token) {
+      if (isApiMode()) {
         await apiClient.post(`/columns/${columnId}/tasks`, {
           title: data.title,
           description: data.description,
@@ -247,7 +272,7 @@ export const useBoardStore = defineStore('board', () => {
     }
   ) => {
     try {
-      if (authStore.dataMode === 'api' && authStore.token) {
+      if (isApiMode()) {
         await apiClient.patch(`/tasks/${taskId}`, data)
         if (data.assignees) {
           await apiClient.post(`/tasks/${taskId}/assign`, {
@@ -291,14 +316,13 @@ export const useBoardStore = defineStore('board', () => {
 
     // 2. Sync with Backend / Storage
     try {
-      if (authStore.dataMode === 'api' && authStore.token) {
-        await apiClient.patch(`/tasks/${taskId}/move`, {
+      await runByMode(
+        () => apiClient.patch(`/tasks/${taskId}/move`, {
           targetColumnId,
           newOrder
-        })
-      } else {
-        storageService.moveTask(taskId, targetColumnId, newOrder)
-      }
+        }),
+        () => storageService.moveTask(taskId, targetColumnId, newOrder)
+      )
     } catch (err) {
       console.error('Move task sync error:', err)
       if (currentBoard.value) {
@@ -309,11 +333,10 @@ export const useBoardStore = defineStore('board', () => {
 
   const deleteTask = async (taskId: string) => {
     try {
-      if (authStore.dataMode === 'api' && authStore.token) {
-        await apiClient.delete(`/tasks/${taskId}`)
-      } else {
-        storageService.deleteTask(taskId)
-      }
+      await runByMode(
+        () => apiClient.delete(`/tasks/${taskId}`),
+        () => storageService.deleteTask(taskId)
+      )
       if (currentBoard.value) {
         await fetchBoardById(currentBoard.value.id)
       }
@@ -342,3 +365,4 @@ export const useBoardStore = defineStore('board', () => {
     deleteTask
   }
 })
+

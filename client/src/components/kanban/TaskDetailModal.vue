@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import {
   X,
   Trash2,
@@ -31,6 +31,20 @@ const emit = defineEmits<{
   (e: 'delete', taskId: string): void
 }>()
 
+const handleKeyDown = (event: KeyboardEvent) => {
+  if (event.key === 'Escape' && props.isOpen) {
+    emit('close')
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('keydown', handleKeyDown)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeyDown)
+})
+
 const authStore = useAuthStore()
 
 const title = ref('')
@@ -40,7 +54,7 @@ const newTagInput = ref('')
 const dueDate = ref('')
 const selectedAssignees = ref<User[]>([])
 
-const PRESET_TAGS = ['UI', 'Design', 'Feature', 'Bug', 'Urgent', 'DevOps', 'Backend']
+const PRESET_TAGS = ['การบ้านด่วน ⚡', 'งานเดี่ยว 👤', 'งานกลุ่ม 👥', 'มีรายงาน 📄', 'เตรียมสอบ 📝', 'เก็บคะแนน 💯', 'ส่งสัปดาห์นี้ ⏰']
 
 watch(
   () => props.task,
@@ -94,7 +108,7 @@ const handleSave = () => {
 
 const handleDelete = () => {
   if (!props.task) return
-  if (confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบการ์ดงาน "${props.task.title}"?`)) {
+  if (confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบการบ้าน "${props.task.title}"?`)) {
     emit('delete', props.task.id)
   }
 }
@@ -103,6 +117,7 @@ const handleDelete = () => {
 <template>
   <div
     v-if="isOpen && task"
+    @click.self="$emit('close')"
     class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in"
   >
     <div
@@ -110,7 +125,7 @@ const handleDelete = () => {
     >
       <!-- Modal Header -->
       <div class="px-7 py-5 border-b border-[#F0ECE1] flex items-center justify-between">
-        <span class="text-xs font-mono font-bold text-neutral-400 uppercase tracking-wider">รายละเอียดงาน (Task Details)</span>
+        <span class="text-xs font-mono font-bold text-neutral-500 uppercase tracking-wider">รายละเอียดการบ้าน (Assignment Details)</span>
         <button
           @click="$emit('close')"
           class="p-1 rounded-full text-neutral-400 hover:text-black hover:bg-neutral-100 transition-colors"
@@ -123,22 +138,23 @@ const handleDelete = () => {
       <div class="p-7 overflow-y-auto space-y-6 flex-1">
         <!-- Title Input -->
         <div>
-          <label class="block text-xs font-bold text-neutral-700 mb-1.5">ชื่องาน</label>
+          <label class="block text-xs font-bold text-neutral-700 mb-1.5">ชื่อการบ้าน / ชิ้นงาน</label>
           <input
             v-model="title"
             type="text"
             required
+            placeholder="เช่น แบบฝึกหัดคณิตศาสตร์ หน้า 45 ข้อ 1-10"
             class="w-full px-4 py-3 bg-[#FAF8F5] border border-[#E5E0D5] rounded-2xl text-sm font-bold text-neutral-900 focus:outline-none focus:border-black transition-colors"
           />
         </div>
 
         <!-- Description Textarea -->
         <div>
-          <label class="block text-xs font-bold text-neutral-700 mb-1.5">คำอธิบายงาน (Description)</label>
+          <label class="block text-xs font-bold text-neutral-700 mb-1.5">รายละเอียดคำสั่ง / หน้าหนังสือ (Description)</label>
           <textarea
             v-model="description"
             rows="3"
-            placeholder="เพิ่มรายละเอียดของงานหรือขั้นตอนการทำงาน..."
+            placeholder="ระบุข้อที่ต้องทำ เกณฑ์คะแนน หรือคำแนะนำของครูผู้สอน..."
             class="w-full px-4 py-3 bg-[#FAF8F5] border border-[#E5E0D5] rounded-2xl text-xs text-neutral-800 placeholder-neutral-400 focus:outline-none focus:border-black transition-colors leading-relaxed"
           ></textarea>
         </div>
@@ -147,7 +163,7 @@ const handleDelete = () => {
         <div>
           <label class="block text-xs font-bold text-neutral-700 mb-1.5 flex items-center gap-1.5">
             <TagIcon class="w-3.5 h-3.5 text-neutral-900" />
-            แท็กหมวดหมู่งาน (Tags)
+            แท็กหมวดหมู่การบ้าน (Tags)
           </label>
 
           <!-- Selected Tags -->
@@ -247,7 +263,7 @@ const handleDelete = () => {
           class="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors"
         >
           <Trash2 class="w-4 h-4" />
-          ลบการ์ดนี้
+          ลบการบ้านนี้
         </button>
 
         <div class="flex items-center gap-2.5">

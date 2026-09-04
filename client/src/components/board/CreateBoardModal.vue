@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { X, Plus, Sparkles } from 'lucide-vue-next'
 
 const props = defineProps<{
@@ -14,6 +14,20 @@ const emit = defineEmits<{
 const title = ref('')
 const description = ref('')
 const error = ref('')
+
+const handleKeyDown = (event: KeyboardEvent) => {
+  if (event.key === 'Escape' && props.isOpen) {
+    emit('close')
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('keydown', handleKeyDown)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeyDown)
+})
 
 const handleSubmit = () => {
   if (!title.value.trim()) {
@@ -33,6 +47,7 @@ const handleSubmit = () => {
 <template>
   <div
     v-if="isOpen"
+    @click.self="$emit('close')"
     class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in"
   >
     <div
@@ -42,7 +57,7 @@ const handleSubmit = () => {
       <div class="px-7 py-5 border-b border-[#F0ECE1] flex items-center justify-between">
         <div class="flex items-center gap-2 text-neutral-900 font-display font-bold text-base">
           <Sparkles class="w-4 h-4 text-amber-500" />
-          <span>สร้างกระดานใหม่ (New Board)</span>
+          <span>สร้างสมุดวิชา / การบ้านใหม่</span>
         </div>
         <button
           @click="$emit('close')"
@@ -56,12 +71,12 @@ const handleSubmit = () => {
       <form @submit.prevent="handleSubmit" class="p-7 space-y-4">
         <div>
           <label class="block text-xs font-bold text-neutral-700 mb-1.5">
-            ชื่อกระดาน <span class="text-rose-500">*</span>
+            ชื่อวิชา / การบ้าน <span class="text-rose-500">*</span>
           </label>
           <input
             v-model="title"
             type="text"
-            placeholder="เช่น Clicknext Sprint 1, Website Redesign"
+            placeholder="เช่น คณิตศาสตร์ ม.ปลาย, โครงงานวิทยาศาสตร์, ภาษาอังกฤษเพื่อการสื่อสาร"
             class="w-full px-4 py-3 bg-[#FAF8F5] border border-[#E5E0D5] rounded-2xl text-xs sm:text-sm text-neutral-900 placeholder-neutral-400 focus:outline-none focus:border-black transition-colors"
             autofocus
           />
@@ -70,18 +85,18 @@ const handleSubmit = () => {
 
         <div>
           <label class="block text-xs font-bold text-neutral-700 mb-1.5">
-            คำอธิบายเพิ่มเติม (Optional)
+            คำอธิบาย / รหัสวิชา / ครูผู้สอน (Optional)
           </label>
           <textarea
             v-model="description"
             rows="3"
-            placeholder="รายละเอียดและเป้าหมายของกระดานนี้..."
+            placeholder="เช่น รหัสวิชา ว30201 ครูผู้สอน อ.สมชาย หรือเป้าหมายคะแนนเก็บ..."
             class="w-full px-4 py-3 bg-[#FAF8F5] border border-[#E5E0D5] rounded-2xl text-xs text-neutral-900 placeholder-neutral-400 focus:outline-none focus:border-black transition-colors"
           ></textarea>
         </div>
 
         <div class="bg-[#FEF0DC]/80 border border-[#FBE0B8] rounded-2xl p-3.5 text-xs text-[#8A5617] flex items-center gap-2">
-          <span>💡 ระบบจะสร้าง 3 คอลัมน์ตั้งต้นให้ทันที: <strong>To Do</strong>, <strong>In Progress</strong>, <strong>Done</strong></span>
+          <span>💡 ระบบจะสร้าง 3 ขั้นตอนการบ้านให้ทันที: <strong>การบ้านที่ได้รับ</strong>, <strong>กำลังทำ</strong>, <strong>ตรวจทาน/ส่งแล้ว</strong></span>
         </div>
 
         <!-- Footer Actions -->
@@ -95,10 +110,10 @@ const handleSubmit = () => {
           </button>
           <button
             type="submit"
-            class="flex items-center gap-1.5 px-6 py-2.5 rounded-full text-xs font-bold text-white bg-black hover:bg-neutral-800 transition-all shadow-sm hover:scale-105 active:scale-95"
+            class="flex items-center gap-1.5 px-6 py-2.5 rounded-full text-xs font-bold text-white bg-neutral-900 hover:bg-black transition-all shadow-sm hover:scale-102 active:scale-98"
           >
             <Plus class="w-4 h-4" />
-            สร้างกระดาน
+            + สร้างสมุดการบ้าน
           </button>
         </div>
       </form>

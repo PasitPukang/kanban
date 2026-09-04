@@ -1,18 +1,13 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import NotificationDropdown from '../notification/NotificationDropdown.vue'
 import {
-  Kanban,
+  GraduationCap,
   Database,
   HardDrive,
-  Users,
   ChevronDown,
-  LayoutDashboard,
-  Check,
-  Shield,
-  ShieldAlert,
   LogOut
 } from 'lucide-vue-next'
 
@@ -20,11 +15,29 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const isUserMenuOpen = ref(false)
+const userMenuRef = ref<HTMLElement | null>(null)
 
-const handleSwitchUser = (user: any) => {
-  authStore.switchUser(user)
-  isUserMenuOpen.value = false
+const handleClickOutside = (event: MouseEvent) => {
+  if (userMenuRef.value && !userMenuRef.value.contains(event.target as Node)) {
+    isUserMenuOpen.value = false
+  }
 }
+
+const handleKeyDown = (event: KeyboardEvent) => {
+  if (event.key === 'Escape') {
+    isUserMenuOpen.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+  document.addEventListener('keydown', handleKeyDown)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+  document.removeEventListener('keydown', handleKeyDown)
+})
 
 const toggleDataMode = () => {
   const newMode = authStore.dataMode === 'localStorage' ? 'api' : 'localStorage'
@@ -44,27 +57,17 @@ const handleLogout = () => {
       <!-- Left: Logo & Navigation Breadcrumb -->
       <div class="flex items-center gap-4">
         <router-link to="/dashboard" class="flex items-center gap-2.5 group">
-          <div class="w-9 h-9 rounded-2xl bg-black text-white flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
-            <Kanban class="w-4 h-4 text-white" />
+          <div class="w-9 h-9 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
+            <GraduationCap class="w-4 h-4 text-white" />
           </div>
           <div>
-            <span class="text-sm font-display font-extrabold tracking-tight text-neutral-900 flex items-center gap-1">
-              Clicknext <span class="text-neutral-500 font-medium">Kanban</span>
+            <span class="text-sm font-display font-extrabold tracking-tight text-neutral-900 flex items-center gap-1.5">
+              Clicknext <span class="text-amber-800 font-bold text-[11px] bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-full">Homework Hub</span>
             </span>
           </div>
         </router-link>
 
         <div v-if="authStore.currentUser" class="h-4 w-px bg-neutral-300 hidden sm:block"></div>
-
-        <!-- Dashboard Link -->
-        <router-link
-          v-if="authStore.currentUser"
-          to="/dashboard"
-          class="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-neutral-600 hover:text-black hover:bg-white/80 transition-all border border-transparent hover:border-[#E5E0D5]"
-        >
-          <LayoutDashboard class="w-3.5 h-3.5 text-neutral-500" />
-          กระดานทั้งหมด
-        </router-link>
 
         <!-- Super Admin Quick Access Pill -->
         <router-link
@@ -76,33 +79,24 @@ const handleLogout = () => {
         </router-link>
       </div>
 
-      <!-- Right: User Switcher & Controls -->
+      <!-- Right: Controls & User Profile -->
       <div class="flex items-center gap-3">
-        <!-- Dual-Engine Switcher Badge (Mobile / Tablet - Super Admin Only) -->
-        <button
-          v-if="authStore.isSuperAdmin"
-          @click="toggleDataMode"
-          class="xl:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all"
-          :class="[
-            authStore.dataMode === 'api'
-              ? 'bg-[#EBFBF4] border-[#BCECD4] text-[#14663E]'
-              : 'bg-[#FFF9EE] border-[#FCE6BD] text-[#915B06]'
-          ]"
+        <!-- Storage Engine Badge -->
+        <div
+          class="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#FFF9EE] border border-[#FCE6BD] text-[#915B06] shadow-2xs"
+          title="โหมดบันทึกข้อมูลในเครื่อง (LocalStorage)"
         >
-          <Database v-if="authStore.dataMode === 'api'" class="w-3.5 h-3.5" />
-          <HardDrive v-else class="w-3.5 h-3.5" />
-          <span class="font-mono text-[10px]">
-            {{ authStore.dataMode === 'api' ? 'API' : 'LOCAL' }}
-          </span>
-        </button>
+          <HardDrive class="w-3.5 h-3.5 text-amber-700" />
+          <span class="font-mono text-[10px] tracking-wide font-bold">LOCAL STORAGE</span>
+        </div>
 
-        <!-- Notification Bell (Mobile / Tablet) -->
-        <div class="xl:hidden">
+        <!-- Notification Bell -->
+        <div>
           <NotificationDropdown />
         </div>
 
         <!-- User Profile & Session Controls -->
-        <div v-if="authStore.currentUser" class="relative">
+        <div v-if="authStore.currentUser" class="relative" ref="userMenuRef">
           <button
             @click="isUserMenuOpen = !isUserMenuOpen"
             class="flex items-center gap-2 p-1.5 pr-3 rounded-full bg-white hover:bg-neutral-50 border border-[#E5E0D5] shadow-2xs transition-all text-left"

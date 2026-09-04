@@ -2,7 +2,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  ShieldAlert,
   ShieldCheck,
   UserPlus,
   Users,
@@ -10,17 +9,14 @@ import {
   Edit2,
   Trash2,
   ArrowLeft,
-  Lock,
-  Mail,
   User as UserIcon,
-  Check,
-  X,
   Database,
-  Layers,
-  Sparkles
+  Layers
 } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
 import { User } from '../types'
+import { isSuperAdminEmail } from '../utils/auth'
+import UserFormModal from '../components/UserFormModal.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -34,16 +30,8 @@ const stats = ref({
 })
 
 // Modal states
-const isCreateModalOpen = ref(false)
-const isEditModalOpen = ref(false)
+const isUserModalOpen = ref(false)
 const selectedUser = ref<User | null>(null)
-
-// Form fields
-const formName = ref('')
-const formEmail = ref('')
-const formRole = ref<'SUPER_ADMIN' | 'USER'>('USER')
-const formPassword = ref('')
-const formError = ref('')
 
 const loadData = async () => {
   await authStore.fetchUsers()
@@ -72,64 +60,14 @@ const filteredUsers = computed(() => {
 
 // Open Create Modal
 const openCreateModal = () => {
-  formName.value = ''
-  formEmail.value = ''
-  formRole.value = 'USER'
-  formPassword.value = 'Password@1234'
-  formError.value = ''
-  isCreateModalOpen.value = true
-}
-
-const handleCreateUser = async () => {
-  if (!formName.value.trim() || !formEmail.value.trim()) {
-    formError.value = 'กรุณากรอกชื่อและอีเมลให้ครบถ้วน'
-    return
-  }
-
-  await authStore.createAdminUser({
-    name: formName.value.trim(),
-    email: formEmail.value.trim(),
-    role: formRole.value
-  })
-
-  isCreateModalOpen.value = false
-  await loadData()
+  selectedUser.value = null
+  isUserModalOpen.value = true
 }
 
 // Open Edit Modal
 const openEditModal = (user: User) => {
   selectedUser.value = user
-  formName.value = user.name
-  formEmail.value = user.email
-  formRole.value = user.role || 'USER'
-  formError.value = ''
-  isEditModalOpen.value = true
-}
-
-const handleUpdateUser = async () => {
-  if (!selectedUser.value) return
-  if (!formName.value.trim() || !formEmail.value.trim()) {
-    formError.value = 'กรุณากรอกชื่อและอีเมลให้ครบถ้วน'
-    return
-  }
-
-  await authStore.updateAdminUser(selectedUser.value.id, {
-    name: formName.value.trim(),
-    email: formEmail.value.trim(),
-    role: formRole.value
-  })
-
-  isEditModalOpen.value = false
-  selectedUser.value = null
-  await loadData()
-}
-
-const isSuperAdminEmail = (email?: string): boolean => {
-  if (!email) return false
-  const clean = email.trim().toLowerCase()
-  return (
-    clean === 'pasitpukang1234567@gmail.com'
-  )
+  isUserModalOpen.value = true
 }
 
 // Delete User
@@ -343,148 +281,11 @@ const handleDeleteUser = async (user: User) => {
       </div>
     </div>
 
-    <!-- Create User Modal -->
-    <div
-      v-if="isCreateModalOpen"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in"
-    >
-      <div class="bg-white border border-[#E5E0D5] rounded-[32px] w-full max-w-md p-7 shadow-2xl space-y-4 animate-in zoom-in-95">
-        <div class="flex items-center justify-between pb-3 border-b border-[#F0ECE1]">
-          <h3 class="font-display font-bold text-base text-neutral-900 flex items-center gap-2">
-            <UserPlus class="w-4 h-4 text-black" />
-            เพิ่มผู้ใช้ใหม่ (New User)
-          </h3>
-          <button @click="isCreateModalOpen = false" class="p-1 rounded-full text-neutral-400 hover:text-black">
-            <X class="w-4 h-4" />
-          </button>
-        </div>
-
-        <div class="space-y-3">
-          <div>
-            <label class="block text-xs font-bold text-neutral-700 mb-1">ชื่อ-นามสกุล *</label>
-            <input
-              v-model="formName"
-              type="text"
-              placeholder="เช่น นายสมชาย สายลุย"
-              class="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-[#E5E0D5] rounded-2xl text-xs text-neutral-900 focus:outline-none focus:border-black"
-            />
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-neutral-700 mb-1">อีเมล *</label>
-            <input
-              v-model="formEmail"
-              type="email"
-              placeholder="user@clicknext.com"
-              class="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-[#E5E0D5] rounded-2xl text-xs text-neutral-900 focus:outline-none focus:border-black"
-            />
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-neutral-700 mb-1">กำหนดสิทธิ์ (Role)</label>
-            <select
-              v-model="formRole"
-              class="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-[#E5E0D5] rounded-2xl text-xs text-neutral-900 focus:outline-none focus:border-black"
-            >
-              <option value="USER">USER (ผู้ใช้งานทั่วไป)</option>
-              <option value="SUPER_ADMIN">SUPER_ADMIN (ผู้ดูแลระบบสูงสุด)</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-neutral-700 mb-1">รหัสผ่านเริ่มต้น</label>
-            <input
-              v-model="formPassword"
-              type="text"
-              class="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-[#E5E0D5] rounded-2xl text-xs text-neutral-900 font-mono"
-            />
-          </div>
-
-          <p v-if="formError" class="text-xs text-rose-500 font-medium">{{ formError }}</p>
-        </div>
-
-        <div class="pt-3 flex items-center justify-end gap-2 border-t border-[#F0ECE1]">
-          <button
-            @click="isCreateModalOpen = false"
-            class="px-4 py-2 rounded-full text-xs font-medium text-neutral-500 hover:text-black"
-          >
-            ยกเลิก
-          </button>
-          <button
-            @click="handleCreateUser"
-            class="px-5 py-2 rounded-full text-xs font-bold text-white bg-black hover:bg-neutral-800 transition-colors shadow-sm"
-          >
-            บันทึกผู้ใช้
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Edit User Modal -->
-    <div
-      v-if="isEditModalOpen"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in"
-    >
-      <div class="bg-white border border-[#E5E0D5] rounded-[32px] w-full max-w-md p-7 shadow-2xl space-y-4 animate-in zoom-in-95">
-        <div class="flex items-center justify-between pb-3 border-b border-[#F0ECE1]">
-          <h3 class="font-display font-bold text-base text-neutral-900 flex items-center gap-2">
-            <Edit2 class="w-4 h-4 text-black" />
-            แก้ไขข้อมูลผู้ใช้ (Edit User)
-          </h3>
-          <button @click="isEditModalOpen = false" class="p-1 rounded-full text-neutral-400 hover:text-black">
-            <X class="w-4 h-4" />
-          </button>
-        </div>
-
-        <div class="space-y-3">
-          <div>
-            <label class="block text-xs font-bold text-neutral-700 mb-1">ชื่อ-นามสกุล</label>
-            <input
-              v-model="formName"
-              type="text"
-              class="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-[#E5E0D5] rounded-2xl text-xs text-neutral-900 focus:outline-none focus:border-black"
-            />
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-neutral-700 mb-1">อีเมล</label>
-            <input
-              v-model="formEmail"
-              type="email"
-              class="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-[#E5E0D5] rounded-2xl text-xs text-neutral-900 focus:outline-none focus:border-black"
-            />
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-neutral-700 mb-1">สิทธิ์ (Role)</label>
-            <select
-              v-model="formRole"
-              :disabled="isSuperAdminEmail(selectedUser?.email)"
-              class="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-[#E5E0D5] rounded-2xl text-xs text-neutral-900 focus:outline-none focus:border-black disabled:opacity-60"
-            >
-              <option value="USER">USER (ผู้ใช้งานทั่วไป)</option>
-              <option value="SUPER_ADMIN">SUPER_ADMIN (ผู้ดูแลระบบสูงสุด)</option>
-            </select>
-          </div>
-
-          <p v-if="formError" class="text-xs text-rose-500 font-medium">{{ formError }}</p>
-        </div>
-
-        <div class="pt-3 flex items-center justify-end gap-2 border-t border-[#F0ECE1]">
-          <button
-            @click="isEditModalOpen = false"
-            class="px-4 py-2 rounded-full text-xs font-medium text-neutral-500 hover:text-black"
-          >
-            ยกเลิก
-          </button>
-          <button
-            @click="handleUpdateUser"
-            class="px-5 py-2 rounded-full text-xs font-bold text-white bg-black hover:bg-neutral-800 transition-colors shadow-sm"
-          >
-            บันทึกการแก้ไข
-          </button>
-        </div>
-      </div>
-    </div>
+    <!-- User Form Modal (Create / Edit) -->
+    <UserFormModal
+      v-model="isUserModalOpen"
+      :user="selectedUser"
+      @saved="loadData"
+    />
   </div>
 </template>

@@ -1,5 +1,6 @@
 import { User, Board, Column, Task, NotificationItem } from '../types'
 import { MOCK_USERS, INITIAL_BOARDS, INITIAL_NOTIFICATIONS } from './mockData'
+import { isSuperAdminEmail } from '../utils/auth'
 
 const STORAGE_KEYS = {
   USERS: 'clicknext_kanban_users',
@@ -15,11 +16,7 @@ export class LocalStorageService {
   }
 
   private isSuperAdminEmail(email?: string): boolean {
-    if (!email) return false
-    const clean = email.trim().toLowerCase()
-    return (
-      clean === 'pasitpukang1234567@gmail.com'
-    )
+    return isSuperAdminEmail(email)
   }
 
   private initDefaults(): void {
